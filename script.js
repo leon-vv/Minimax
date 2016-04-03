@@ -223,22 +223,30 @@ function clientCoordToBoard(coord) {
         y : coord.y - 15
     });
 }
-
-function checkWinner(board) {
-    var winner = board.hasWinner();
-
-    if(winner) {
-        board.render();
-        alert("We have a winner! Congratulations " + (winner == "yellow" ? "user." : "computer."));
-        location.reload();
-    }
-}
-
 var mouseClick = (function() {
     var board = new Board();
     var userHasTurn = true;
+    var gameEnded = false;
+
+    function checkWinner(message) {
+        var winner = board.hasWinner();
+
+        if(winner) {
+            board.render();
+            message.textContent = "We have a winner! Congratulations " + (winner == "yellow" ? "user." : "computer.");
+            console.log(message.innerHTML);
+            gameEnded = true;
+            return true;
+        }
+        return false;
+    }
 
     return function(e) {
+
+        if(gameEnded) return;
+
+        var message = document.getElementById("message");
+
         if(userHasTurn) {
             userHasTurn = false; 
 
@@ -246,12 +254,16 @@ var mouseClick = (function() {
                 x: e.clientX, y: e.clientY});
 
             board = board.play(Math.floor(hit.x / 100), yellow);
-            checkWinner(board);
+            message.innerHTML = "Turn: computer";
 
-            board = board.autoPlay(red, 4);
-            checkWinner(board);
 
-            board.render();
+            if(!checkWinner(message))  {
+
+                board = board.autoPlay(red, 4);
+                message.innerHTML = "Turn: user";
+
+                if(!checkWinner(message)) board.render();
+            }
         }
 
         userHasTurn = true;
