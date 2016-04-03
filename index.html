@@ -10,25 +10,42 @@
             #board {
                 background-color:#0000FF;
                 margin:15px auto;
+                padding:0px;
                 width:700px;
                 height:600px;
                 overflow:auto;
             }
             .cell {
-                width:90px;
-                height:90px;
+                float:left;
+                width:80px;
+                height:80px;
                 margin:10px;
                 padding:0px;
                 border-radius:50%;
-                background-color:#FF0000;
+            }
+            #pos {
+                position:absolute;
+                left:0px;
+                top:0px;
+                padding:20px;
+            }
+            #message {
+                margin-top:20px;
+                width:190px;
+                font-family:sans-serif;
+                font-size:25px;
+            }
+            button {
+                font-size:20px;
             }
         </style>
         <script src="script.js"></script>
     </head>
     <body>
-    
-        <div id="board">
-            <div class="cell"></div>            
+        <div id="pos">
+            <button onclick="location.reload()">New game</button>
+            <div id="message">Turn: user</div> 
         </div>
+        <div id="board"></div>
     </body>
 </html>
