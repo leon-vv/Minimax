@@ -256,13 +256,15 @@ var mouseClick = (function() {
             board = board.play(Math.floor(hit.x / 100), yellow);
             message.innerHTML = "Turn: computer";
 
-
             if(!checkWinner(message))  {
+                 
+                board.render();
+                setTimeout(function() {
+                    board = board.autoPlay(red, 5);
+                    message.innerHTML = "Turn: user";
 
-                board = board.autoPlay(red, 4);
-                message.innerHTML = "Turn: user";
-
-                if(!checkWinner(message)) board.render();
+                    if(!checkWinner(message)) board.render();
+                }, 50);
             }
         }
 
