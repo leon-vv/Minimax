@@ -1,8 +1,9 @@
 
-var yellow = true;
-var red = false;
+var yellow = 1;
+var red = 0;
 
 function colorToString(color) {
+    assert(color == yellow || color == red);
     return color ? "yellow" : "red";
 }
 
@@ -22,218 +23,254 @@ var Ticker = function Ticker() {
     var consecutive = 0;
 
     var last = null;
-    this.redThree = 0;
-    this.yellowThree = 0;
-    this.redFour = 0;
-    this.yellowFour = 0;
+    var redThree = 0;
+    var yellowThree = 0;
+    var redFour = 0;
+    var yellowFour = 0;
+
 
     var tryGet = function(disks, x, y) {
         return disks[x][y];
     }
  
-    var hitColor = function(ticker, c) {
-        if(c == undefined) return;
+    this.hitColor = function(c) {
+        if(c == 3) {
+            this.check();
+            return;
+        }
         else if(c == last) consecutive += 1;
         else {
-            ticker.reset();
+            this.check();
             last = c;
             consecutive = 1;    
         }
     };
 
-    this.reset = function() {
+    this.check = function() {
         if(consecutive >= 4) {
-            if(last == red) this.redFour += 1;
-            else if(last == yellow) this.yellowFour += 1;
+            if(last == red) redFour += 1;
+            else if(last == yellow) yellowFour += 1;
         }
         else if(consecutive == 3) {
-            if(last == red) this.redThree += 1;
-            else if(last == yellow) this.yellowThree += 1;
+            if(last == red) redThree += 1;
+            else if(last == yellow) yellowThree += 1;
         }
         consecutive = 0;
+    };
+
+    this.reset = function() {
+        consecutive = 0;
+        last = null;
+        redThree = 0;
+        yellowThree = 0;
+        redFour = 0;
+        yellowFour = 0;
+
     }
 
-    this.hit = function(disks, x, y) { hitColor(this, tryGet(disks, x, y)); };
+    this.hit = function(disks, x, y) { this.hitColor(tryGet(disks, x, y)); };
 
+    this.result = function() {
+        return {
+            redThree: redThree,
+            yellowThree: yellowThree,
+            redFour: redFour,
+            yellowFour: yellowFour
+        };
+    }
 }
 
 
-var Board = function(disks) {
-    this.disks = disks || [[], [], [], [], [], [], []];
+var Board = function() {
+    this.disks = [
+        new Uint8Array(6),
+        new Uint8Array(6),
+        new Uint8Array(6),
+        new Uint8Array(6),
+        new Uint8Array(6),
+        new Uint8Array(6),
+        new Uint8Array(6),
+        new Uint8Array(6)
+    ];
 
-    this.play = function(column, color) {
-        assert(color == yellow || color == red);
-        assert(0 <= color && color <= 6);
-        assert(this.disks.length == 7);
-        
-        var c = this.disks[column];
+    for(var i = 0; i < 7; i++) this.disks[i].fill(3);
 
-        if(c.length >= 6) {
-            return false;
-        }
+    this.lengths = new Uint8Array(7);
+    this.lengths.fill(0);
+}
 
-        c.push(color);
-        return true;
-    };
+Board.prototype.play = function(column, color) {
+
+    var l = this.lengths[column];
     
-    this.unplay = function(column) {
-        assert(column >= 0 && column <= 6);
-        assert(this.disks[column].length > 0);
+    assert(l >= 0);
 
-        this.disks[column].pop();
-    };
-
-    this.render = function() {
-        
-        var board = document.getElementById("board");
-
-        for(var x = 0; x < 7; x++) {
-            var column = this.disks[x];
-            var l = column.length;
-
-            for(var y = 0; y < 6; y++) {
-                var coord = {x : x, y : y};
-                var index = coordToNodeIndex(coord);
-                var node = board.childNodes[index];
-                if(l > y) node.style.backgroundColor = colorToString(column[y]);
-                else node.style.backgroundColor = "black";
-            }
-        }
-    };
+    if(l >= 6) return false;
     
+    this.disks[column][l] = color;
+    this.lengths[column] = l + 1;
 
-    this.numberOfConsecutive = function() {
+    return true;
+};
 
-        var ticker = new Ticker();
+Board.prototype.unplay = function(column) {
+    var l = this.lengths[column];
 
-        // Horizontal
+    this.disks[column][l-1] = 3;
+    this.lengths[column] = l - 1;
+};
+
+Board.prototype.render = function() {
+    
+    var board = document.getElementById("board");
+
+    for(var x = 0; x < 7; x++) {
+        var column = this.disks[x];
+
         for(var y = 0; y < 6; y++) {
-            for(var x = 0; x < 7; x++) {
-                ticker.hit(this.disks,x, y);
-            }
-            ticker.reset();
-        }
+            var coord = {x : x, y : y};
+            var index = coordToNodeIndex(coord);
 
-        // Vertical
+            var node = board.childNodes[index];
+            
+            var l = this.lengths[x];
+            assert(l >= 0 && l <= 6);
+
+            if(this.lengths[x] > y) node.style.backgroundColor = colorToString(column[y]);
+            else node.style.backgroundColor = "black";
+        }
+    }
+};
+
+var ticker = new Ticker();
+
+Board.prototype.numberOfConsecutive = function() {
+
+    ticker.reset();
+
+    // Horizontal
+    for(var y = 0; y < 6; y++) {
         for(var x = 0; x < 7; x++) {
-            var l = this.disks[x].length;
-            for(var y = 0; y < l; y++) {
-                ticker.hit(this.disks,x, y);
-            }
-            ticker.reset();
+            ticker.hit(this.disks,x, y);
         }
-        
-        // Oblique right
-        for(var y = 3; y >= 0; y--) {
-            for(var s = 0; s < 6 - y; s++) {
-                ticker.hit(this.disks,s, y+s);
-            }
-            ticker.reset();
-        }
-        for(var x = 1; x < 4; x++) {
-            for(var s = 0; s < 7 - x; s++) {
-                ticker.hit(this.disks,x+s, s);
-            }
-            ticker.reset();
-        }
-        // Oblique left
-        for(var y = 3; y >= 0; y--) {
-            for(var s = 0; s < 6 - y; s++) {
-                ticker.hit(this.disks,6 - s, y + s);
-            }
-            ticker.reset();
-        }
-        for(var x = 5; x >= 2; x--) {
-            for(var s = 0; s < x + 1; s++) {
-                ticker.hit(this.disks,x - s, s);
-            }
-            ticker.reset();
-        }
-
-        return {
-            redThree: ticker.redThree,
-            yellowThree: ticker.yellowThree,
-            redFour: ticker.redFour,
-            yellowFour: ticker.yellowFour
-        };
-    };
-
-    // Positive is good for red.
-    // Negative is good for yellow.
-    this.evaluate = function() {
-        var cons = this.numberOfConsecutive();
-
-        return 1000 * (cons.redFour - cons.yellowFour) + cons.redThree - cons.yellowThree;
-    };
-
-    this.hasWinner = function() {
-        var cons = this.numberOfConsecutive(4);
-        if(cons.redFour >= 1) return "red";
-        if(cons.yellowFour >= 1) return "yellow";
-
-        return false;
+        ticker.check();
     }
 
-    this.miniMax = function(color, depth) {
-
-        if(depth == 0 || this.hasWinner()) {
-            var score = this.evaluate();
-            return score;
+    // Vertical
+    for(var x = 0; x < 7; x++) {
+        var l = this.lengths[x];
+        for(var y = 0; y < l; y++) {
+            ticker.hit(this.disks,x, y);
         }
-
-        // Computer plays, maximize!
-        if(color == red) {
-            var bestScore = null;
-
-            for(var i = 0; i < 7; i++) {
-                var played = this.play(i, color);
-
-                if(played) {
-                    var score = this.miniMax(!color, depth - 1);
-                    if(bestScore == null || score > bestScore) bestScore = score;
-                    this.unplay(i);
-                }
-            }
-            return bestScore;
+        ticker.check();
+    }
+    
+    // Oblique right
+    for(var y = 3; y >= 0; y--) {
+        for(var s = 0; s < 6 - y; s++) {
+            ticker.hit(this.disks,s, y+s);
         }
-        // User plays, minimize!
-        else {
-            var minScore = null;
-
-            for(var i = 0; i < 7; i++) {
-                var played = this.play(i, color);
-
-                if(played) {
-                    var score = this.miniMax(!color, depth - 1);
-                    if(minScore == null || score < minScore) minScore = score;
-                    this.unplay(i);
-                }
-            }
-            return minScore;
+        ticker.check();
+    }
+    for(var x = 1; x < 4; x++) {
+        for(var s = 0; s < 7 - x; s++) {
+            ticker.hit(this.disks,x+s, s);
         }
+        ticker.check();
+    }
+    // Oblique left
+    for(var y = 3; y >= 0; y--) {
+        for(var s = 0; s < 6 - y; s++) {
+            ticker.hit(this.disks,6 - s, y + s);
+        }
+        ticker.check();
+    }
+    for(var x = 5; x >= 2; x--) {
+        for(var s = 0; s < x + 1; s++) {
+            ticker.hit(this.disks,x - s, s);
+        }
+        ticker.check();
+    }
+    
+    return ticker.result();
+};
+
+// Positive is good for red.
+// Negative is good for yellow.
+Board.prototype.evaluate = function() {
+    var cons = this.numberOfConsecutive();
+
+    return 1000 * (cons.redFour - cons.yellowFour) + cons.redThree - cons.yellowThree;
+};
+
+Board.prototype.hasWinner = function() {
+    var cons = this.numberOfConsecutive();
+    if(cons.redFour >= 1) return "red";
+    if(cons.yellowFour >= 1) return "yellow";
+
+    return false;
+}
+
+Board.prototype.miniMax = function(color, depth) {
+
+    if(depth == 0 || this.hasWinner()) {
+        var score = this.evaluate();
+        return score;
     }
 
-    this.autoPlay = function(color, depth) {
-        var bestIndex = null;
+    // Computer plays, maximize!
+    if(color == red) {
         var bestScore = null;
 
         for(var i = 0; i < 7; i++) {
             var played = this.play(i, color);
 
             if(played) {
-                var score = this.miniMax(!color, depth);
-                if(bestScore == null || score > bestScore)  {
-                    bestScore = score;
-                    bestIndex = i;
-                }
-
-               this.unplay(i);
+                var score = this.miniMax(Number(!color), depth - 1);
+                if(bestScore == null || score > bestScore) bestScore = score;
+                this.unplay(i);
             }
         }
+        return bestScore;
+    }
+    // User plays, minimize!
+    else {
+        var minScore = null;
 
-        this.play(bestIndex, color);
-    };
+        for(var i = 0; i < 7; i++) {
+            var played = this.play(i, color);
+
+            if(played) {
+                var score = this.miniMax(Number(!color), depth - 1);
+                if(minScore == null || score < minScore) minScore = score;
+                this.unplay(i);
+            }
+        }
+        return minScore;
+    }
 }
+
+Board.prototype.autoPlay = function(color, depth) {
+    var bestIndex = null;
+    var bestScore = null;
+
+    for(var i = 0; i < 7; i++) {
+        var played = this.play(i, color);
+
+        if(played) {
+            var score = this.miniMax(Number(!color), depth);
+            if(bestScore == null || score > bestScore)  {
+                bestScore = score;
+                bestIndex = i;
+            }
+
+            this.unplay(i);
+        }
+    }
+
+    this.play(bestIndex, color);
+};
+
 
 function clientCoordToBoard(coord) {
     var width = document.body.clientWidth;
@@ -276,19 +313,22 @@ var mouseClick = function(message, boardElem) {
 
         message.innerHTML = "Turn: computer";
 
-        if(!checkWinner(message))  {
-                
-            board.render();
-            board.autoPlay(red, 6);
-            message.innerHTML = "Turn: user";
-
-            if(!checkWinner(message)) board.render();
-        }
-
-        // Give the queued event time to fire (and be ignored).
         setTimeout(function() {
-            userHasTurn = true;
-        }, 100);
+
+            if(!checkWinner(message))  {
+                    
+                board.render();
+                board.autoPlay(red, 6);
+                message.innerHTML = "Turn: user";
+
+                if(!checkWinner(message)) board.render();
+            }
+
+            // Give the queued event time to fire (and be ignored).
+            setTimeout(function() {
+                userHasTurn = true;
+            }, 50);
+        }, 50);
     };
     
 };
