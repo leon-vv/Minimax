@@ -134,7 +134,7 @@ var Board = function(disks) {
             }
             reset();
         }
-        for(var x = 5; x >= n; x--) {
+        for(var x = 5; x >= n - 1; x--) {
             for(var s = 0; s < x + 1; s++) {
                 tryHit(x - s, s);
             }
@@ -267,7 +267,7 @@ var mouseClick = function(message, boardElem) {
         if(!checkWinner(message))  {
                 
             board.render();
-            board.autoPlay(red, 5);
+            board.autoPlay(red, 4);
             message.innerHTML = "Turn: user";
 
             if(!checkWinner(message)) board.render();
