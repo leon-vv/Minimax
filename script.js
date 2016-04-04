@@ -17,6 +17,47 @@ function assert(condition, message) {
     }
 }
 
+// Keeps track of amount of consecutive colors.
+var Ticker = function Ticker() {
+    var consecutive = 0;
+
+    var last = null;
+    this.redThree = 0;
+    this.yellowThree = 0;
+    this.redFour = 0;
+    this.yellowFour = 0;
+
+    var tryGet = function(disks, x, y) {
+        return disks[x][y];
+    }
+ 
+    var hitColor = function(ticker, c) {
+        if(c == undefined) return;
+        else if(c == last) consecutive += 1;
+        else {
+            ticker.reset();
+            last = c;
+            consecutive = 1;    
+        }
+    };
+
+    this.reset = function() {
+        if(consecutive >= 4) {
+            if(last == red) this.redFour += 1;
+            else if(last == yellow) this.yellowFour += 1;
+        }
+        else if(consecutive == 3) {
+            if(last == red) this.redThree += 1;
+            else if(last == yellow) this.yellowThree += 1;
+        }
+        consecutive = 0;
+    }
+
+    this.hit = function(disks, x, y) { hitColor(this, tryGet(disks, x, y)); };
+
+}
+
+
 var Board = function(disks) {
     this.disks = disks || [[], [], [], [], [], [], []];
 
@@ -60,104 +101,75 @@ var Board = function(disks) {
         }
     };
     
-    this.numberOfNConsecutive = function(n, color) {
-        assert(n > 0);
-        assert(color == red || color == yellow);
 
-        var rows = 0;
-        var consecutive = 0;
+    this.numberOfConsecutive = function() {
 
-        var reset = function() {
-            assert(n > 2);
-
-            if(consecutive >= n) {
-                rows += 1;
-            }
-            consecutive = 0;
-        };
-        
-        var hitColor = function(c) {
-            if(c == color) consecutive += 1;
-            else reset();
-        };
-
-        var tryGet = (function(board) {
-            return function(x, y) {
-
-                var column = board.disks[x];
-
-                if(column.length > y) {
-                    return column[y];
-                }
-                else {
-                    return null;
-                }
-            };
-        })(this);
-        
-        var tryHit = function(x, y) { hitColor(tryGet(x, y)); };
+        var ticker = new Ticker();
 
         // Horizontal
         for(var y = 0; y < 6; y++) {
             for(var x = 0; x < 7; x++) {
-                tryHit(x, y);
+                ticker.hit(this.disks,x, y);
             }
-            reset();
+            ticker.reset();
         }
 
         // Vertical
         for(var x = 0; x < 7; x++) {
             var l = this.disks[x].length;
             for(var y = 0; y < l; y++) {
-                tryHit(x, y);
+                ticker.hit(this.disks,x, y);
             }
-            reset();
+            ticker.reset();
         }
         
         // Oblique right
-        for(var y = 6 - n; y >= 0; y--) {
+        for(var y = 3; y >= 0; y--) {
             for(var s = 0; s < 6 - y; s++) {
-                tryHit(s, y+s);
+                ticker.hit(this.disks,s, y+s);
             }
-            reset();
+            ticker.reset();
         }
-        for(var x = 1; x < 7-n; x++) {
+        for(var x = 1; x < 4; x++) {
             for(var s = 0; s < 7 - x; s++) {
-                tryHit(x+s, s);
+                ticker.hit(this.disks,x+s, s);
             }
-            reset();
+            ticker.reset();
         }
         // Oblique left
-        for(var y = 6 - n; y >= 0; y--) {
+        for(var y = 3; y >= 0; y--) {
             for(var s = 0; s < 6 - y; s++) {
-                tryHit(6 - s, y + s);
+                ticker.hit(this.disks,6 - s, y + s);
             }
-            reset();
+            ticker.reset();
         }
-        for(var x = 5; x >= n - 1; x--) {
+        for(var x = 5; x >= 2; x--) {
             for(var s = 0; s < x + 1; s++) {
-                tryHit(x - s, s);
+                ticker.hit(this.disks,x - s, s);
             }
-            reset();
+            ticker.reset();
         }
 
-        return rows;
+        return {
+            redThree: ticker.redThree,
+            yellowThree: ticker.yellowThree,
+            redFour: ticker.redFour,
+            yellowFour: ticker.yellowFour
+        };
     };
 
     // Positive is good for red.
     // Negative is good for yellow.
     this.evaluate = function() {
-        var redFour = this.numberOfNConsecutive(4, red);
-        var yellowFour = this.numberOfNConsecutive(4, yellow);
-        var redThree = this.numberOfNConsecutive(3, red);
-        var yellowThree = this.numberOfNConsecutive(3, yellow);
+        var cons = this.numberOfConsecutive();
 
-        return 1000 * (redFour - yellowFour) + redThree - yellowThree;
+        return 1000 * (cons.redFour - cons.yellowFour) + cons.redThree - cons.yellowThree;
     };
 
     this.hasWinner = function() {
-        if(this.numberOfNConsecutive(4, yellow)) return "yellow";
-        if(this.numberOfNConsecutive(4, red)) return "red";
+        var cons = this.numberOfConsecutive(4);
+        if(cons.redFour >= 1) return "red";
+        if(cons.yellowFour >= 1) return "yellow";
 
         return false;
     }
@@ -267,7 +279,7 @@ var mouseClick = function(message, boardElem) {
         if(!checkWinner(message))  {
                 
             board.render();
-            board.autoPlay(red, 4);
+            board.autoPlay(red, 6);
             message.innerHTML = "Turn: user";
 
             if(!checkWinner(message)) board.render();
