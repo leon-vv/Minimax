@@ -21,18 +21,21 @@ var Board = function(disks) {
     this.disks = disks || [[], [], [], [], [], [], []];
 
     this.play = function(column, color) {
-        var newColumn = this.disks[column].slice(0);
+        var c = this.disks[column];
 
-        if(newColumn.length >= 6) {
-            return null;
+        if(c.length >= 6) {
+            return false;
         }
 
-        newColumn.push(color);
+        c.push(color);
+        return true;
+    };
+    
+    this.unplay = function(column) {
+        assert(column >= 0 && column <= 6);
+        assert(this.disks[column].length > 0);
 
-        var newDisks = this.disks.slice(0);
-        newDisks[column] = newColumn;
-
-        return new Board(newDisks);
+        this.disks[column].pop();
     };
 
     this.render = function() {
@@ -147,17 +150,6 @@ var Board = function(disks) {
         return 1000 * (redFour - yellowFour) + redThree - yellowThree;
     };
 
-    this.expand = function(color) {
-        var boards = [];
-        for(var i = 0; i < 7; i++) {
-            var b = this.play(i, color);
-            if(b != null) boards.push(b);
-        }
-
-        assert(boards.length > 0);
-        return boards;
-    }
-    
     this.hasWinner = function() {
         if(this.numberOfNConsecutive(4, yellow)) return "yellow";
         if(this.numberOfNConsecutive(4, red)) return "red";
@@ -175,43 +167,54 @@ var Board = function(disks) {
         // Computer plays, maximize!
         if(color == red) {
             var bestScore = null;
-            var boards = this.expand(color);
 
-            for(var i = 0; i < boards.length; i++) {
-                var score = boards[i].miniMax(!color, depth - 1);
-                if(bestScore == null || score > bestScore) bestScore = score;
+            for(var i = 0; i < 7; i++) {
+                var played = this.play(i, color);
+
+                if(played) {
+                    var score = this.miniMax(!color, depth - 1);
+                    if(bestScore == null || score > bestScore) bestScore = score;
+                    this.unplay(i);
+                }
             }
             return bestScore;
         }
         // User plays, minimize!
         else {
             var minScore = null;
-            var boards = this.expand(color);
-            for(var i = 0; i < boards.length; i++) {
-                var score = boards[i].miniMax(!color, depth - 1);
-                if(minScore == null || score < minScore) minScore = score;
+
+            for(var i = 0; i < 7; i++) {
+                var played = this.play(i, color);
+
+                if(played) {
+                    var score = this.miniMax(!color, depth - 1);
+                    if(minScore == null || score < minScore) minScore = score;
+                    this.unplay(i);
+                }
             }
             return minScore;
         }
     }
 
     this.autoPlay = function(color, depth) {
-        var board = null;
-        var best = null;
+        var bestIndex = null;
+        var bestScore = null;
 
         for(var i = 0; i < 7; i++) {
-            var b = this.play(i, color);
+            var played = this.play(i, color);
 
-            if(b != null) {
-                var score = b.miniMax(!color, depth);
-                if(best == null || score > best)  {
-                    best = score;
-                    board = b;
+            if(played) {
+                var score = this.miniMax(!color, depth);
+                if(bestScore == null || score > bestScore)  {
+                    bestScore = score;
+                    bestIndex = i;
                 }
+
+               this.unplay(i);
             }
         }
 
-        return board;
+        this.play(bestIndex);
     };
 }
 
@@ -247,30 +250,23 @@ var mouseClick = (function() {
 
         var message = document.getElementById("message");
 
-        if(userHasTurn) {
-            userHasTurn = false; 
+        var hit = clientCoordToBoard({
+            x: e.clientX, y: e.clientY});
 
-            var hit = clientCoordToBoard({
-                x: e.clientX, y: e.clientY});
+        var played = board.play(Math.floor(hit.x / 100), yellow);
 
-            var b = board.play(Math.floor(hit.x / 100), yellow);
+        if(!played) return;
 
-            if(b == null) return;
-            board = b;
+        message.innerHTML = "Turn: computer";
 
-            message.innerHTML = "Turn: computer";
+        if(!checkWinner(message))  {
+                
+            board.render();
+            board.autoPlay(red, 5);
+            message.innerHTML = "Turn: user";
 
-            if(!checkWinner(message))  {
-                 
-                board.render();
-                board = board.autoPlay(red, 5);
-                message.innerHTML = "Turn: user";
-
-                if(!checkWinner(message)) board.render();
-            }
+            if(!checkWinner(message)) board.render();
         }
-
-        userHasTurn = true;
     };
 })();
 
