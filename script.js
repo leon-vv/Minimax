@@ -23,7 +23,7 @@ var Board = function(disks) {
     this.play = function(column, color) {
         var newColumn = this.disks[column].slice(0);
 
-        if(newColumn.length > 5) {
+        if(newColumn.length >= 6) {
             return null;
         }
 
@@ -253,18 +253,20 @@ var mouseClick = (function() {
             var hit = clientCoordToBoard({
                 x: e.clientX, y: e.clientY});
 
-            board = board.play(Math.floor(hit.x / 100), yellow);
+            var b = board.play(Math.floor(hit.x / 100), yellow);
+
+            if(b == null) return;
+            board = b;
+
             message.innerHTML = "Turn: computer";
 
             if(!checkWinner(message))  {
                  
                 board.render();
-                setTimeout(function() {
-                    board = board.autoPlay(red, 5);
-                    message.innerHTML = "Turn: user";
+                board = board.autoPlay(red, 5);
+                message.innerHTML = "Turn: user";
 
-                    if(!checkWinner(message)) board.render();
-                }, 50);
+                if(!checkWinner(message)) board.render();
             }
         }
 
