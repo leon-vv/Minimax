@@ -13,7 +13,7 @@ function coordToNodeIndex(coord) {
 
 function assert(condition, message) {
     if (!condition) {
-        throw message || "Assertion failed";
+        throw message || new Error().stack;
     }
 }
 
@@ -21,18 +21,25 @@ var Board = function(disks) {
     this.disks = disks || [[], [], [], [], [], [], []];
 
     this.play = function(column, color) {
-        var newColumn = this.disks[column].slice(0);
+        assert(color == yellow || color == red);
+        assert(0 <= color && color <= 6);
+        assert(this.disks.length == 7);
+        
+        var c = this.disks[column];
 
-        if(newColumn.length >= 6) {
-            return null;
+        if(c.length >= 6) {
+            return false;
         }
 
-        newColumn.push(color);
+        c.push(color);
+        return true;
+    };
+    
+    this.unplay = function(column) {
+        assert(column >= 0 && column <= 6);
+        assert(this.disks[column].length > 0);
 
-        var newDisks = this.disks.slice(0);
-        newDisks[column] = newColumn;
-
-        return new Board(newDisks);
+        this.disks[column].pop();
     };
 
     this.render = function() {
@@ -100,33 +107,34 @@ var Board = function(disks) {
 
         // Vertical
         for(var x = 0; x < 7; x++) {
-            for(var y = 0; y < 6; y++) {
+            var l = this.disks[x].length;
+            for(var y = 0; y < l; y++) {
                 tryHit(x, y);
             }
             reset();
         }
         
         // Oblique right
-        for(var y = 5; y >= 0; y--) {
+        for(var y = 6 - n; y >= 0; y--) {
             for(var s = 0; s < 6 - y; s++) {
                 tryHit(s, y+s);
             }
             reset();
         }
-        for(var x = 1; x < 7; x++) {
+        for(var x = 1; x < 7-n; x++) {
             for(var s = 0; s < 7 - x; s++) {
                 tryHit(x+s, s);
             }
             reset();
         }
         // Oblique left
-        for(var y = 5; y >= 0; y--) {
+        for(var y = 6 - n; y >= 0; y--) {
             for(var s = 0; s < 6 - y; s++) {
                 tryHit(6 - s, y + s);
             }
             reset();
         }
-        for(var x = 5; x >= 0; x--) {
+        for(var x = 5; x >= n; x--) {
             for(var s = 0; s < x + 1; s++) {
                 tryHit(x - s, s);
             }
@@ -147,17 +155,6 @@ var Board = function(disks) {
         return 1000 * (redFour - yellowFour) + redThree - yellowThree;
     };
 
-    this.expand = function(color) {
-        var boards = [];
-        for(var i = 0; i < 7; i++) {
-            var b = this.play(i, color);
-            if(b != null) boards.push(b);
-        }
-
-        assert(boards.length > 0);
-        return boards;
-    }
-    
     this.hasWinner = function() {
         if(this.numberOfNConsecutive(4, yellow)) return "yellow";
         if(this.numberOfNConsecutive(4, red)) return "red";
@@ -175,43 +172,54 @@ var Board = function(disks) {
         // Computer plays, maximize!
         if(color == red) {
             var bestScore = null;
-            var boards = this.expand(color);
 
-            for(var i = 0; i < boards.length; i++) {
-                var score = boards[i].miniMax(!color, depth - 1);
-                if(bestScore == null || score > bestScore) bestScore = score;
+            for(var i = 0; i < 7; i++) {
+                var played = this.play(i, color);
+
+                if(played) {
+                    var score = this.miniMax(!color, depth - 1);
+                    if(bestScore == null || score > bestScore) bestScore = score;
+                    this.unplay(i);
+                }
             }
             return bestScore;
         }
         // User plays, minimize!
         else {
             var minScore = null;
-            var boards = this.expand(color);
-            for(var i = 0; i < boards.length; i++) {
-                var score = boards[i].miniMax(!color, depth - 1);
-                if(minScore == null || score < minScore) minScore = score;
+
+            for(var i = 0; i < 7; i++) {
+                var played = this.play(i, color);
+
+                if(played) {
+                    var score = this.miniMax(!color, depth - 1);
+                    if(minScore == null || score < minScore) minScore = score;
+                    this.unplay(i);
+                }
             }
             return minScore;
         }
     }
 
     this.autoPlay = function(color, depth) {
-        var board = null;
-        var best = null;
+        var bestIndex = null;
+        var bestScore = null;
 
         for(var i = 0; i < 7; i++) {
-            var b = this.play(i, color);
+            var played = this.play(i, color);
 
-            if(b != null) {
-                var score = b.miniMax(!color, depth);
-                if(best == null || score > best)  {
-                    best = score;
-                    board = b;
+            if(played) {
+                var score = this.miniMax(!color, depth);
+                if(bestScore == null || score > bestScore)  {
+                    bestScore = score;
+                    bestIndex = i;
                 }
+
+               this.unplay(i);
             }
         }
 
-        return board;
+        this.play(bestIndex, color);
     };
 }
 
@@ -223,18 +231,19 @@ function clientCoordToBoard(coord) {
         y : coord.y - 15
     });
 }
-var mouseClick = (function() {
+
+var mouseClick = function(message, boardElem) {
     var board = new Board();
     var userHasTurn = true;
     var gameEnded = false;
 
-    function checkWinner(message) {
+    function checkWinner() {
         var winner = board.hasWinner();
 
         if(winner) {
             board.render();
             message.textContent = "We have a winner! Congratulations " + (winner == "yellow" ? "user." : "computer.");
-            console.log(message.innerHTML);
+            boardElem.style.borderColor = winner;
             gameEnded = true;
             return true;
         }
@@ -243,36 +252,34 @@ var mouseClick = (function() {
 
     return function(e) {
 
-        if(gameEnded) return;
+        if(gameEnded || !userHasTurn) return;
+        userHasTurn = false;
 
-        var message = document.getElementById("message");
+        var hit = clientCoordToBoard({
+            x: e.clientX, y: e.clientY});
 
-        if(userHasTurn) {
-            userHasTurn = false; 
+        var played = board.play(Math.floor(hit.x / 100), yellow);
 
-            var hit = clientCoordToBoard({
-                x: e.clientX, y: e.clientY});
+        if(!played) return;
 
-            var b = board.play(Math.floor(hit.x / 100), yellow);
+        message.innerHTML = "Turn: computer";
 
-            if(b == null) return;
-            board = b;
+        if(!checkWinner(message))  {
+                
+            board.render();
+            board.autoPlay(red, 5);
+            message.innerHTML = "Turn: user";
 
-            message.innerHTML = "Turn: computer";
-
-            if(!checkWinner(message))  {
-                 
-                board.render();
-                board = board.autoPlay(red, 5);
-                message.innerHTML = "Turn: user";
-
-                if(!checkWinner(message)) board.render();
-            }
+            if(!checkWinner(message)) board.render();
         }
 
-        userHasTurn = true;
+        // Give the queued event time to fire (and be ignored).
+        setTimeout(function() {
+            userHasTurn = true;
+        }, 100);
     };
-})();
+    
+};
 
 
 window.onload = function() {
@@ -288,6 +295,7 @@ window.onload = function() {
             board.appendChild(cell);
         }
 
-        board.addEventListener("click", mouseClick);
+        var message = document.getElementById("message");
+        board.addEventListener("click", mouseClick(message, board));
     })();
 };
