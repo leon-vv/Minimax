@@ -13,7 +13,7 @@ function coordToNodeIndex(coord) {
 
 function assert(condition, message) {
     if (!condition) {
-        throw message || "Assertion failed";
+        throw message || new Error().stack;
     }
 }
 
@@ -21,6 +21,10 @@ var Board = function(disks) {
     this.disks = disks || [[], [], [], [], [], [], []];
 
     this.play = function(column, color) {
+        assert(color == yellow || color == red);
+        assert(0 <= color && color <= 6);
+        assert(this.disks.length == 7);
+        
         var c = this.disks[column];
 
         if(c.length >= 6) {
@@ -103,33 +107,34 @@ var Board = function(disks) {
 
         // Vertical
         for(var x = 0; x < 7; x++) {
-            for(var y = 0; y < 6; y++) {
+            var l = this.disks[x].length;
+            for(var y = 0; y < l; y++) {
                 tryHit(x, y);
             }
             reset();
         }
         
         // Oblique right
-        for(var y = 5; y >= 0; y--) {
+        for(var y = 6 - n; y >= 0; y--) {
             for(var s = 0; s < 6 - y; s++) {
                 tryHit(s, y+s);
             }
             reset();
         }
-        for(var x = 1; x < 7; x++) {
+        for(var x = 1; x < 7-n; x++) {
             for(var s = 0; s < 7 - x; s++) {
                 tryHit(x+s, s);
             }
             reset();
         }
         // Oblique left
-        for(var y = 5; y >= 0; y--) {
+        for(var y = 6 - n; y >= 0; y--) {
             for(var s = 0; s < 6 - y; s++) {
                 tryHit(6 - s, y + s);
             }
             reset();
         }
-        for(var x = 5; x >= 0; x--) {
+        for(var x = 5; x >= n; x--) {
             for(var s = 0; s < x + 1; s++) {
                 tryHit(x - s, s);
             }
@@ -214,7 +219,7 @@ var Board = function(disks) {
             }
         }
 
-        this.play(bestIndex);
+        this.play(bestIndex, color);
     };
 }
 
@@ -226,18 +231,19 @@ function clientCoordToBoard(coord) {
         y : coord.y - 15
     });
 }
-var mouseClick = (function() {
+
+var mouseClick = function(message, boardElem) {
     var board = new Board();
     var userHasTurn = true;
     var gameEnded = false;
 
-    function checkWinner(message) {
+    function checkWinner() {
         var winner = board.hasWinner();
 
         if(winner) {
             board.render();
             message.textContent = "We have a winner! Congratulations " + (winner == "yellow" ? "user." : "computer.");
-            console.log(message.innerHTML);
+            boardElem.style.borderColor = winner;
             gameEnded = true;
             return true;
         }
@@ -246,9 +252,8 @@ var mouseClick = (function() {
 
     return function(e) {
 
-        if(gameEnded) return;
-
-        var message = document.getElementById("message");
+        if(gameEnded || !userHasTurn) return;
+        userHasTurn = false;
 
         var hit = clientCoordToBoard({
             x: e.clientX, y: e.clientY});
@@ -267,8 +272,14 @@ var mouseClick = (function() {
 
             if(!checkWinner(message)) board.render();
         }
+
+        // Give the queued event time to fire (and be ignored).
+        setTimeout(function() {
+            userHasTurn = true;
+        }, 100);
     };
-})();
+    
+};
 
 
 window.onload = function() {
@@ -284,6 +295,7 @@ window.onload = function() {
             board.appendChild(cell);
         }
 
-        board.addEventListener("click", mouseClick);
+        var message = document.getElementById("message");
+        board.addEventListener("click", mouseClick(message, board));
     })();
 };
