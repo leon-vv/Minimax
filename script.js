@@ -83,41 +83,33 @@ var Ticker = function Ticker() {
 
 var Board = function() {
     this.disks = [
-        new Uint8Array(6),
-        new Uint8Array(6),
-        new Uint8Array(6),
-        new Uint8Array(6),
-        new Uint8Array(6),
-        new Uint8Array(6),
-        new Uint8Array(6),
-        new Uint8Array(6)
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        []
     ];
-
-    for(var i = 0; i < 7; i++) this.disks[i].fill(3);
-
-    this.lengths = new Uint8Array(7);
-    this.lengths.fill(0);
-}
+};
 
 Board.prototype.play = function(column, color) {
 
-    var l = this.lengths[column];
-    
-    assert(l >= 0);
+    var c = this.disks[column];
 
-    if(l >= 6) return false;
-    
-    this.disks[column][l] = color;
-    this.lengths[column] = l + 1;
+    if(c.length >= 6) return false;
+
+    c.push(color);
 
     return true;
 };
 
 Board.prototype.unplay = function(column) {
-    var l = this.lengths[column];
+    var c = this.disks[column];
 
-    this.disks[column][l-1] = 3;
-    this.lengths[column] = l - 1;
+    assert(c.length > 0);
+
+    c.pop();
 };
 
 Board.prototype.render = function() {
@@ -132,11 +124,8 @@ Board.prototype.render = function() {
             var index = coordToNodeIndex(coord);
 
             var node = board.childNodes[index];
-            
-            var l = this.lengths[x];
-            assert(l >= 0 && l <= 6);
 
-            if(this.lengths[x] > y) node.style.backgroundColor = colorToString(column[y]);
+            if(column.length > y) node.style.backgroundColor = colorToString(column[y]);
             else node.style.backgroundColor = "black";
         }
     }
@@ -158,7 +147,7 @@ Board.prototype.numberOfConsecutive = function() {
 
     // Vertical
     for(var x = 0; x < 7; x++) {
-        var l = this.lengths[x];
+        var l = this.disks[x].length;
         for(var y = 0; y < l; y++) {
             ticker.hit(this.disks,x, y);
         }
@@ -285,13 +274,14 @@ var mouseClick = function(message, boardElem) {
     var board = new Board();
     var userHasTurn = true;
     var gameEnded = false;
+    var lowerDepth = document.getElementById("lowerDepth");
 
     function checkWinner() {
         var winner = board.hasWinner();
 
         if(winner) {
             board.render();
-            message.textContent = "We have a winner! Congratulations " + (winner == "yellow" ? "user." : "computer.");
+            message.textContent = "We hebben een winnaar! Gefeliciteerd " + (winner == "yellow" ? "gebruiker." : "computer.");
             boardElem.style.borderColor = winner;
             gameEnded = true;
             return true;
@@ -319,7 +309,8 @@ var mouseClick = function(message, boardElem) {
             if(!checkWinner(message))  {
                     
                 board.render();
-                board.autoPlay(red, 6);
+
+                board.autoPlay(red, lowerDepth.checked ? 5 : 6);
                 message.innerHTML = "Turn: user";
 
                 if(!checkWinner(message)) board.render();
