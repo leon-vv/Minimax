@@ -312,6 +312,7 @@ var mouseClick = function(message, boardElem) {
         if(!played) return;
 
         message.innerHTML = "Turn: computer";
+        board.render();
 
         setTimeout(function() {
 
