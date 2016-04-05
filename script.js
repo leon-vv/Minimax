@@ -274,13 +274,14 @@ var mouseClick = function(message, boardElem) {
     var board = new Board();
     var userHasTurn = true;
     var gameEnded = false;
+    var lowerDepth = document.getElementById("lowerDepth");
 
     function checkWinner() {
         var winner = board.hasWinner();
 
         if(winner) {
             board.render();
-            message.textContent = "We have a winner! Congratulations " + (winner == "yellow" ? "user." : "computer.");
+            message.textContent = "We hebben een winnaar! Gefeliciteerd " + (winner == "yellow" ? "gebruiker." : "computer.");
             boardElem.style.borderColor = winner;
             gameEnded = true;
             return true;
@@ -308,7 +309,8 @@ var mouseClick = function(message, boardElem) {
             if(!checkWinner(message))  {
                     
                 board.render();
-                board.autoPlay(red, 6);
+
+                board.autoPlay(red, lowerDepth.checked ? 5 : 6);
                 message.innerHTML = "Turn: user";
 
                 if(!checkWinner(message)) board.render();

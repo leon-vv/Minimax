@@ -35,15 +35,21 @@
                 padding:20px;
                 margin:0px auto;
                 text-align:center;
+                font-size:20px;
+            }
+            #pos label {
+                display:block;
+                margin-top:20px;
+                font-size:19px;
+            }
+            #pos label input {
+                transform:scale(1.2);
             }
             #message {
                 display:inline;
                 font-family:sans-serif;
                 font-size:25px;
                 margin-top:10px;
-            }
-            button {
-                font-size:20px;
             }
 
             @media screen and (max-width: 1100px) {
@@ -66,10 +72,17 @@
         <div id="board"></div>
 
         <div id="pos">
-            <button onclick="location.reload()">New game</button>
+            <button onclick="location.reload()">Nieuw spel</button>
             <br /><br />
-            <div id="message">Turn: user</div> 
-        </div>
+            <div id="message">Beurt: gebruiker</div> 
 
+            <br /><br />
+
+             <label>
+                <input type="checkbox" id="lowerDepth" checked />
+                Snellere, minder goede zetten
+            </label>
+
+        </div>
     </body>
 </html>
