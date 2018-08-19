@@ -281,7 +281,7 @@ var mouseClick = function(message, boardElem) {
 
         if(winner) {
             board.render();
-            message.textContent = "We hebben een winnaar! Gefeliciteerd " + (winner == "yellow" ? "gebruiker." : "computer.");
+            message.textContent = "The game finished! Congratulations " + (winner == "yellow" ? "user." : "computer.");
             boardElem.style.borderColor = winner;
             gameEnded = true;
             return true;
