@@ -274,7 +274,6 @@ var mouseClick = function(message, boardElem) {
     var board = new Board();
     var userHasTurn = true;
     var gameEnded = false;
-    var lowerDepth = document.getElementById("lowerDepth");
 
     function checkWinner() {
         var winner = board.hasWinner();
@@ -310,7 +309,7 @@ var mouseClick = function(message, boardElem) {
                     
                 board.render();
 
-                board.autoPlay(red, lowerDepth.checked ? 5 : 6);
+                board.autoPlay(red, 6);
                 message.innerHTML = "Turn: user";
 
                 if(!checkWinner(message)) board.render();
